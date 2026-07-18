@@ -37,8 +37,9 @@ def find_pre_kg_fee_info(pdf_path, school_name):
 
     # Priority-based level identification
     pre_kg_patterns = [
-        (r"pre\s*-?\s*k[g1]|pre\s*-?\s*kindergarten", "Pre-KG"),
-        (r"early\s+years|early\s+start|toddler", "Early Years"),
+        (r"pre\s*-?\s*k1\b", "Pre-K1"),  # Neev specific
+        (r"pre\s*-?\s*kg|pre\s*-?\s*kindergarten", "Pre-KG"),
+        (r"early\s+years", "Early Years"),
         (r"reception", "Reception"),
         (r"nursery|p1\s*-\s*p3", "Nursery"),
     ]
@@ -47,7 +48,7 @@ def find_pre_kg_fee_info(pdf_path, school_name):
     for pattern, level_name in pre_kg_patterns:
         if re.search(pattern, text_lower):
             info["level"] = level_name
-            info["confidence"] = "High" if "pre-kg" in pattern else "Medium"
+            info["confidence"] = "High"
             found_level = True
             break
 
