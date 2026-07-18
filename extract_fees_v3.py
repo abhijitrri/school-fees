@@ -30,6 +30,8 @@ def find_pre_kg_fee_info(pdf_path, school_name):
         "school_name": school_name,
         "level": None,
         "fees": None,
+        "currency": "INR",
+        "fees_inr": None,
         "duration_type": None,
         "confidence": "Low",
         "comments": ""
@@ -126,10 +128,24 @@ def find_pre_kg_fee_info(pdf_path, school_name):
     elif re.search(r'\bper\s+term\b|per\s+semester|term\s+fee', text_lower):
         info["duration_type"] = "Per term"
 
-    # Check for USD currency
+    # Detect currency and convert to INR
+    usd_to_inr = 84  # Exchange rate as of July 2026
+
     if '$' in text and 'usd' in text_lower:
+        info["currency"] = "USD"
         if info["fees"]:
-            info["comments"] = "Fees in USD. Manual conversion required."
+            try:
+                # Convert USD to INR
+                usd_amount = float(info["fees"].replace(',', ''))
+                inr_amount = usd_amount * usd_to_inr
+                info["fees_inr"] = f"{int(inr_amount):,}"
+                info["comments"] = f"Converted from USD @ {usd_to_inr} INR/USD"
+            except:
+                pass
+    else:
+        info["currency"] = "INR"
+        if info["fees"]:
+            info["fees_inr"] = info["fees"]
 
     return info
 
@@ -152,8 +168,8 @@ def create_docx(output_path, data_list):
     desc = doc.add_paragraph("Extracted from school fee structure PDFs. Manual verification recommended for accuracy.")
     desc.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-    # Create table
-    table = doc.add_table(rows=1, cols=6)
+    # Create table with 7 columns
+    table = doc.add_table(rows=1, cols=7)
     table.style = 'Light Grid Accent 1'
 
     # Set column widths
@@ -162,12 +178,13 @@ def create_docx(output_path, data_list):
         row.cells[1].width = 1500000
         row.cells[2].width = 1500000
         row.cells[3].width = 1500000
-        row.cells[4].width = 1200000
-        row.cells[5].width = 2000000
+        row.cells[4].width = 1500000
+        row.cells[5].width = 1200000
+        row.cells[6].width = 2000000
 
     # Add header row
     header_cells = table.rows[0].cells
-    headers = ['School Name', 'Level', 'Fees (INR)', 'Duration Type', 'Confidence', 'Comments']
+    headers = ['School Name', 'Level', 'Reported Fees', 'Fees_INR', 'Duration Type', 'Confidence', 'Comments']
     for i, header in enumerate(headers):
         header_cells[i].text = header
         for paragraph in header_cells[i].paragraphs:
@@ -179,10 +196,18 @@ def create_docx(output_path, data_list):
         row_cells = table.add_row().cells
         row_cells[0].text = item.get('school_name', '')
         row_cells[1].text = item.get('level', '') or 'NOT FOUND'
-        row_cells[2].text = item.get('fees', '') or 'NOT FOUND'
-        row_cells[3].text = item.get('duration_type', '') or 'NOT SPECIFIED'
-        row_cells[4].text = item.get('confidence', 'Low')
-        row_cells[5].text = item.get('comments', '')
+
+        # Reported Fees with currency
+        fees = item.get('fees', '') or 'NOT FOUND'
+        currency = item.get('currency', 'INR')
+        reported_fees = f"{fees} {currency}" if fees != 'NOT FOUND' else 'NOT FOUND'
+        row_cells[2].text = reported_fees
+
+        # Fees in INR
+        row_cells[3].text = item.get('fees_inr', '') or 'NOT FOUND'
+        row_cells[4].text = item.get('duration_type', '') or 'NOT SPECIFIED'
+        row_cells[5].text = item.get('confidence', 'Low')
+        row_cells[6].text = item.get('comments', '')
 
     doc.save(output_path)
     print(f"\n✓ Document created: {output_path}")
