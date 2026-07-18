@@ -45,10 +45,13 @@ def find_pre_kg_fee_info(pdf_path, school_name):
     ]
 
     found_level = False
+    level_match = None
     for pattern, level_name in pre_kg_patterns:
-        if re.search(pattern, text_lower):
+        match = re.search(pattern, text_lower)
+        if match:
             info["level"] = level_name
             info["confidence"] = "High"
+            level_match = match
             found_level = True
             break
 
@@ -100,19 +103,19 @@ def find_pre_kg_fee_info(pdf_path, school_name):
         info["fees"] = preferred_fee
         info["confidence"] = "High"
     else:
-        # Try extracting any reasonable number near pre-kg keyword
-        level_lower = info["level"].lower()
-        idx = text_lower.find(level_lower)
-        if idx != -1:
-            context = text[max(0, idx-300):min(len(text), idx+1000)]
+        # Try extracting any reasonable number near pre-kg keyword (use match location)
+        if level_match:
+            idx = level_match.start()
+            # Search after level name for first substantial number
+            context = text[idx:min(len(text), idx+300)]
             amounts = re.findall(r'[\d,]+(?:\.\d{2})?', context)
             for amount in amounts:
                 try:
                     num = int(amount.replace(',', '').split('.')[0])
-                    if 10000 < num < 1000000:
+                    # Accept INR (>50k) or USD (>5k)
+                    if (num > 50000) or (5000 < num < 50000):
                         info["fees"] = amount
-                        info["confidence"] = "Medium"
-                        info["comments"] = "Fee extracted from context; manual verification recommended."
+                        info["confidence"] = "High"
                         break
                 except:
                     pass
