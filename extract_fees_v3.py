@@ -184,10 +184,9 @@ def create_docx(output_path, data_list):
     print(f"\n✓ Document created: {output_path}")
 
 def main():
-    # Paths - works when run from the script directory
-    script_dir = Path(__file__).parent
-    brochures_dir = script_dir
-    output_file = script_dir / "information.docx"
+    # Paths - use current directory (works from any location)
+    brochures_dir = Path.cwd()
+    output_file = brochures_dir / "information.docx"
 
     print("=" * 80)
     print("SCHOOL FEE EXTRACTION")
